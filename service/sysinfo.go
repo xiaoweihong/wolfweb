@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	//排除/var/lib/kubelet,/boot挂载点
-	diskReg = "^/var/lib/kubelet|/boot|/var/lib/docker|/etc|/dev$"
+	//排除/var/lib/kubelet,/boot,/etc,/dev挂载点
+	diskReg = "^/var/lib/kubelet|/boot|/var/lib/docker|/etc|/dev"
 )
 
 func GetSysInfo() (sysinfo model.HostInfo, err error) {
@@ -63,14 +63,19 @@ func GetSysInfo() (sysinfo model.HostInfo, err error) {
 			return sysinfo, err
 		}
 		// docker容器挂载
-		if strings.Contains(p.Mountpoint,"/hostfs/"){
-			p.Mountpoint = strings.TrimPrefix(p.Mountpoint,"/hostfs")
+		if strings.Contains(p.Mountpoint, "/hostfs") {
+			tmpRoot := strings.TrimPrefix(p.Mountpoint, "/hostfs")
+			if len(tmpRoot) == 0 {
+				p.Mountpoint = "/"
+			} else {
+				p.Mountpoint = tmpRoot
+			}
 		}
+		diskInfo.MountPoint = p.Mountpoint
 		// 排除无用挂载点
 		if regexp.MustCompile(diskReg).MatchString(p.Mountpoint) {
 			continue
 		}
-		diskInfo.MountPoint = p.Mountpoint
 		diskInfo.DiskSizeBytes = d.Total
 		diskInfo.DiskAvailBytes = d.Free
 		diskInfo.DiskPercent = d.UsedPercent
